@@ -59,7 +59,7 @@ npm run build        # production bundle in dist/
 ```bash
 cd backend && pytest -q
 ```
-Runs 17 tests against an in-memory SQLite database with `AI_PROVIDER=none` (no network, no paid API). They cover
+Runs 22 tests against an in-memory SQLite database with `AI_PROVIDER=none` (no network, no paid API). They cover
 registration/login, RBAC, rate limiting, public tracking privacy, AI fallback + validation, duplicate detection, the **full
 lifecycle** (submit → triage → assign → in progress → report → reject → resubmit → accept → feedback → reopen → audit trail),
 attachment access control, upload validation (type/signature/size), list filters/statistics and escalation.
@@ -79,7 +79,8 @@ The same flows were also smoke-tested against real PostgreSQL.
 | 9 | Filters/stats | CMO → filter by district/category/priority/status/overdue; open Overview | Counts match list totals; charts render |
 | 10 | Upload security | Upload `.exe` or renamed text as `.pdf`, or > 5 MB | 415 / 415 / 413 |
 | 11 | Contact form | Submit contact form; CMO → Contact enquiries | Enquiry listed |
-| 12 | AI fallback | Unset API key, analyse | Orange FALLBACK badge and note |
+| 12 | Manage officers | CMO → Manage officers → create officer → log in as them in a private window → deactivate → login fails | Officer sees only own department; deactivated account is blocked |
+| 13 | AI fallback | Unset API key, analyse | Orange FALLBACK badge and note |
 
 ## Troubleshooting
 - *Cannot reach the server*: check `VITE_API_URL` and that the backend allows your origin in `CORS_ORIGINS`.

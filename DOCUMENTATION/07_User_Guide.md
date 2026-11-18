@@ -32,7 +32,9 @@
    - **Add remark** as *internal* (CMO only), *department*, or *public* (visible to the citizen);
    - **Escalate** delayed grievances (sets High priority and flags it to the department);
    - when a department has submitted its action-taken report, **Accept & resolve** or **Return** with remarks.
-5. **Contact enquiries** tab lists messages from the Contact form.
+5. **Manage officers** tab: create officer accounts (name, email, mobile, department, temporary password), deactivate/reactivate
+   officers, or reset a password. Share temporary passwords through a secure channel.
+6. **Contact enquiries** tab lists messages from the Contact form.
 
 ## Department officers
 1. **Login** with an officer account – the dashboard lists only your department's grievances with counts.

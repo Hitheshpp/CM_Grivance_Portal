@@ -36,6 +36,26 @@ class RegisterIn(BaseModel):
         return v.strip()
 
 
+class OfficerCreateIn(RegisterIn):
+    """CMO-created department officer account (temporary password is handed over out-of-band)."""
+    department_id: int
+
+
+class OfficerActiveIn(BaseModel):
+    is_active: bool
+
+
+class PasswordResetIn(BaseModel):
+    password: str = Field(min_length=8, max_length=64)
+
+    @field_validator("password")
+    @classmethod
+    def _password(cls, v: str) -> str:
+        if not (re.search(r"[A-Za-z]", v) and re.search(r"\d", v)):
+            raise ValueError("Password must contain at least one letter and one digit")
+        return v
+
+
 class LoginIn(BaseModel):
     email: str = Field(max_length=255)
     password: str = Field(max_length=64)

@@ -27,6 +27,7 @@ Base URL: `http://localhost:8001` (local) · interactive OpenAPI/Swagger UI at *
 | CMO | `GET /api/cmo/stats` · `/officers` · `/enquiries` | cmo |
 | | `POST /api/cmo/grievances/{ref}/assign` · `/escalate` · `/review-report` | cmo |
 | | `PATCH /api/cmo/grievances/{ref}/triage` | cmo |
+| | `POST /api/cmo/officers` · `PATCH /api/cmo/officers/{id}/active` · `POST /api/cmo/officers/{id}/reset-password` | cmo |
 | Officer | `POST /api/officer/grievances/{ref}/report` | officer |
 
 ---
@@ -153,7 +154,17 @@ Moves `Submitted → Under Review` automatically, records a `department_assignme
 `{"reason": "Delayed beyond SLA"}` → sets `escalated`, priority High, department-visible history entry.
 ### POST /api/cmo/grievances/{ref}/review-report
 `{"decision": "accept"|"reject", "remarks": "…"}` – accept → **Resolved**; reject (remarks required) → back to **In Progress**.
-### GET /api/cmo/officers?department_id= · GET /api/cmo/enquiries
+### GET /api/cmo/officers?department_id=&include_inactive=
+Lists officers (`id, name, email, mobile, is_active, department_id, department`). Active only by default.
+### POST /api/cmo/officers
+Creates an officer account with a temporary password. 201 returns the officer (never the password); 409 duplicate email; 404 unknown department.
+```json
+{ "name": "Meera Das", "email": "meera.das@demo-portal.in", "mobile": "9876501234", "password": "TempPass1", "department_id": 1 }
+```
+### PATCH /api/cmo/officers/{id}/active · POST /api/cmo/officers/{id}/reset-password
+`{"is_active": false}` blocks login immediately (existing tokens stop working; history is kept). `{"password": "NewPass99"}` resets the password.
+Only officer accounts can be managed through these endpoints (404 for CMO/citizen ids).
+### GET /api/cmo/enquiries
 
 ## Officer
 ### POST /api/officer/grievances/{ref}/report (multipart)

@@ -7,7 +7,9 @@ from ..constants import (REPORT_ACCEPTED, REPORT_PENDING, REPORT_REJECTED, ROLE_
 from ..database import get_db
 from ..deps import require_roles
 from ..models import ContactEnquiry, Department, DepartmentAssignment, Feedback, Grievance, User, utcnow
-from ..schemas import AssignIn, EscalateIn, ReportReviewIn, TriageIn
+from ..schemas import (AssignIn, EscalateIn, OfficerActiveIn, OfficerCreateIn, PasswordResetIn, ReportReviewIn,
+                       TriageIn)
+from ..security import hash_password
 from ..services.workflow import (add_history, apply_status, due_date_for, get_grievance_or_404, grievance_detail)
 
 router = APIRouter(prefix="/api/cmo", tags=["CMO"], dependencies=[Depends(require_roles(ROLE_CMO))])
@@ -58,13 +60,60 @@ def stats(db: Session = Depends(get_db)):
     }
 
 
+def officer_out(u: User) -> dict:
+    return {"id": u.id, "name": u.name, "email": u.email, "mobile": u.mobile, "is_active": u.is_active,
+            "department_id": u.department_id, "department": u.department.name if u.department else None,
+            "created_at": u.created_at}
+
+
 @router.get("/officers")
-def officers(department_id: int | None = None, db: Session = Depends(get_db)):
-    q = select(User).where(User.role == ROLE_OFFICER, User.is_active.is_(True))
+def officers(department_id: int | None = None, include_inactive: bool = False, db: Session = Depends(get_db)):
+    """Officer list. Assignment dropdowns use the default (active only); the management screen asks for all."""
+    q = select(User).where(User.role == ROLE_OFFICER)
+    if not include_inactive:
+        q = q.where(User.is_active.is_(True))
     if department_id:
         q = q.where(User.department_id == department_id)
-    return [{"id": u.id, "name": u.name, "department_id": u.department_id,
-             "department": u.department.name if u.department else None} for u in db.scalars(q.order_by(User.name))]
+    return [officer_out(u) for u in db.scalars(q.order_by(User.name))]
+
+
+@router.post("/officers", status_code=201)
+def create_officer(body: OfficerCreateIn, db: Session = Depends(get_db)):
+    """CMO provisions a department officer account with a temporary password."""
+    if db.get(Department, body.department_id) is None:
+        raise HTTPException(404, "Department not found")
+    email = body.email.lower()
+    if db.scalar(select(User).where(func.lower(User.email) == email)):
+        raise HTTPException(409, "An account with this email already exists")
+    officer = User(name=body.name, email=email, mobile=body.mobile, password_hash=hash_password(body.password),
+                   role=ROLE_OFFICER, department_id=body.department_id)
+    db.add(officer)
+    db.commit()
+    return officer_out(officer)
+
+
+def _get_officer(db: Session, officer_id: int) -> User:
+    u = db.get(User, officer_id)
+    if u is None or u.role != ROLE_OFFICER:  # CMO/citizen accounts cannot be touched through this API
+        raise HTTPException(404, "Officer not found")
+    return u
+
+
+@router.patch("/officers/{officer_id}/active")
+def set_officer_active(officer_id: int, body: OfficerActiveIn, db: Session = Depends(get_db)):
+    """Deactivate (blocks login immediately) or reactivate an officer. Their history is kept."""
+    u = _get_officer(db, officer_id)
+    u.is_active = body.is_active
+    db.commit()
+    return officer_out(u)
+
+
+@router.post("/officers/{officer_id}/reset-password")
+def reset_officer_password(officer_id: int, body: PasswordResetIn, db: Session = Depends(get_db)):
+    u = _get_officer(db, officer_id)
+    u.password_hash = hash_password(body.password)
+    db.commit()
+    return {"message": f"Password reset for {u.name}. Share the new password securely."}
 
 
 @router.get("/enquiries")

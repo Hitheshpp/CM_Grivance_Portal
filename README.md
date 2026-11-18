@@ -10,9 +10,13 @@ investigates → action-taken report → CMO reviews → citizen notified → Re
 ## Links
 | | |
 |---|---|
-| Hosted application | _add URL after deployment_ |
-| Hosted API docs | _add URL_`/docs` |
+| Hosted application (frontend) | https://cm-grivance-portal.vercel.app/ |
+| Hosted API + Swagger docs | https://cm-grivance-portal.onrender.com/docs |
+| Source code | https://github.com/Hitheshpp/CM_Grivance_Portal |
 | Demo video | _add URL_ |
+
+> **Note:** the API runs on a free tier that sleeps after ~15 minutes of inactivity. The **first request can take up to a
+> minute** while it wakes up; please wait and refresh once if the first page shows an error.
 
 ## Demo credentials (fictional test accounts)
 Password for all: **`Demo@1234`**
@@ -24,6 +28,8 @@ Password for all: **`Demo@1234`**
 | Officer – Public Works | `officer.pwd@demo-portal.in` |
 | Officer – Health | `officer.health@demo-portal.in` |
 | Other officers | `officer.<edu|water|power|lsgd|home|sjd|agri|env>@demo-portal.in` |
+
+The CMO can create more officer accounts under **CMO Dashboard → Manage officers** (create, deactivate/reactivate, reset password).
 
 ## Tech stack
 React 18 + Vite + Recharts · **FastAPI** (Python 3.12) + SQLAlchemy 2 · **PostgreSQL** · JWT (RBAC: citizen / cmo / officer) ·
@@ -51,7 +57,7 @@ cd ../frontend && npm install && echo "VITE_API_URL=http://localhost:8001" > .en
 Open http://localhost:5173. Demo data is seeded automatically on first start. Full instructions: [06_Setup_and_Testing](DOCUMENTATION/06_Setup_and_Testing.md).
 
 ## Tests
-`cd backend && pytest -q` → 17 end-to-end API tests (RBAC, full workflow, AI fallback, uploads, statistics).
+`cd backend && pytest -q` → 22 end-to-end API tests (RBAC, full workflow, AI fallback, uploads, statistics).
 
 ## Documentation
 1. [Project Overview](DOCUMENTATION/01_Project_Overview.md) · 2. [System Architecture](DOCUMENTATION/02_System_Architecture.md) ·
@@ -71,5 +77,5 @@ Claude Code (AI coding assistant) · OpenAI / Anthropic / Google Gemini LLM APIs
 `backend/requirements.txt` and `frontend/package.json` · hosting providers as listed above.
 
 ## Known limitations (prototype)
-No email/SMS (updates are in-app) · no password reset · officer accounts are seeded (no admin UI) · tables auto-created (no Alembic
+No email/SMS (updates are in-app) · no password reset · tables auto-created (no Alembic
 migrations) · in-memory rate limiter (single instance) · JWT in localStorage · files stored in PostgreSQL (5 MB limit).

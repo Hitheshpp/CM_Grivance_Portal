@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { api } from '../../api';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Alert, Pagination, PriorityBadge, Spinner, StatusBadge, formatDate, formatDateTime, useFetch, useMeta } from '../../components/ui';
 
@@ -18,13 +19,107 @@ export default function CmoDashboard() {
     <div className="container">
       <h1>CMO Dashboard</h1>
       <div className="tabs" role="tablist">
-        {[['overview', 'Overview & statistics'], ['grievances', 'All grievances'], ['enquiries', 'Contact enquiries']].map(([k, l]) => (
+        {[['overview', 'Overview & statistics'], ['grievances', 'All grievances'], ['officers', 'Manage officers'], ['enquiries', 'Contact enquiries']].map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
       {tab === 'overview' && <Overview stats={stats} quick={quick} />}
       {tab === 'grievances' && <GrievanceList filters={filters} setFilters={setFilters} page={page} setPage={setPage} />}
+      {tab === 'officers' && <Officers />}
       {tab === 'enquiries' && <Enquiries />}
+    </div>
+  );
+}
+
+const EMPTY_OFFICER = { name: '', email: '', mobile: '', password: '', department_id: '' };
+
+function Officers() {
+  const [reload, setReload] = useState(0);
+  const depts = useFetch('/api/public/departments').data || [];
+  const { data: officers, loading, error } = useFetch('/api/cmo/officers?include_inactive=true', [reload]);
+  const [form, setForm] = useState(EMPTY_OFFICER);
+  const [msg, setMsg] = useState({ kind: 'success', text: '' });
+  const [busy, setBusy] = useState(false);
+  const [resetting, setResetting] = useState(null); // { id, password }
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const run = async (fn, okText) => {
+    setBusy(true); setMsg({ kind: 'success', text: '' });
+    try {
+      const r = await fn();
+      setMsg({ kind: 'success', text: okText || r?.message || 'Done' });
+      setReload((n) => n + 1);
+      return true;
+    } catch (e) {
+      setMsg({ kind: 'error', text: e.message });
+      return false;
+    } finally { setBusy(false); }
+  };
+
+  const create = async (e) => {
+    e.preventDefault();
+    const ok = await run(() => api('/api/cmo/officers', { method: 'POST', json: { ...form, department_id: Number(form.department_id) } }),
+      `Officer account created for ${form.name}. Share the temporary password securely.`);
+    if (ok) setForm(EMPTY_OFFICER);
+  };
+
+  return (
+    <div className="detail-grid" style={{ gridTemplateColumns: '1fr 380px' }}>
+      <div className="card">
+        <h3>Department officers</h3>
+        <Alert kind={msg.kind}>{msg.text}</Alert>
+        {loading && <Spinner />}<Alert>{error}</Alert>
+        <div className="table-wrap">
+          <table className="data">
+            <thead><tr><th>Name</th><th>Email</th><th>Department</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              {(officers || []).map((o) => (
+                <tr key={o.id}>
+                  <td>{o.name}</td><td>{o.email}</td><td>{o.department}</td>
+                  <td><span className={`badge ${o.is_active ? 'resolved' : 'neutral'}`}>{o.is_active ? 'Active' : 'Deactivated'}</span></td>
+                  <td>
+                    {resetting?.id === o.id ? (
+                      <form className="btn-row" onSubmit={async (e) => { e.preventDefault(); if (await run(() => api(`/api/cmo/officers/${o.id}/reset-password`, { method: 'POST', json: { password: resetting.password } }))) setResetting(null); }}>
+                        <label className="sr-only" htmlFor={`rp-${o.id}`}>New password</label>
+                        <input id={`rp-${o.id}`} type="text" autoComplete="off" placeholder="New password" minLength={8} required style={{ width: 150 }}
+                          value={resetting.password} onChange={(e) => setResetting({ id: o.id, password: e.target.value })} />
+                        <button className="btn small" disabled={busy}>Save</button>
+                        <button type="button" className="btn secondary small" onClick={() => setResetting(null)}>Cancel</button>
+                      </form>
+                    ) : (
+                      <div className="btn-row">
+                        <button className="btn secondary small" disabled={busy} onClick={() => setResetting({ id: o.id, password: '' })}>Reset password</button>
+                        <button className={`btn small ${o.is_active ? 'danger' : ''}`} disabled={busy}
+                          onClick={() => run(() => api(`/api/cmo/officers/${o.id}/active`, { method: 'PATCH', json: { is_active: !o.is_active } }), o.is_active ? `${o.name} deactivated` : `${o.name} reactivated`)}>
+                          {o.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="hint">Deactivating blocks login immediately; the officer's past remarks and history are kept.</p>
+      </div>
+
+      <form className="card" onSubmit={create}>
+        <h3>Create officer account</h3>
+        <div className="field"><label htmlFor="n-name">Full name</label>
+          <input id="n-name" required minLength={2} maxLength={120} value={form.name} onChange={set('name')} /></div>
+        <div className="field"><label htmlFor="n-email">Email (login id)</label>
+          <input id="n-email" type="email" required value={form.email} onChange={set('email')} /></div>
+        <div className="field"><label htmlFor="n-mobile">Mobile <span className="hint">(10 digits)</span></label>
+          <input id="n-mobile" inputMode="numeric" required pattern="(\+91)?[6-9][0-9]{9}" value={form.mobile} onChange={set('mobile')} /></div>
+        <div className="field"><label htmlFor="n-dept">Department</label>
+          <select id="n-dept" required value={form.department_id} onChange={set('department_id')}>
+            <option value="">Select department</option>{depts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+        <div className="field"><label htmlFor="n-pass">Temporary password <span className="hint">(min 8, letters + digits)</span></label>
+          <input id="n-pass" type="text" autoComplete="off" required minLength={8} maxLength={64} value={form.password} onChange={set('password')} /></div>
+        <button className="btn" disabled={busy}>{busy ? 'Saving…' : 'Create officer'}</button>
+        <p className="hint" style={{ marginTop: '.6rem' }}>Share the temporary password through a secure channel and ask the officer to keep it private.</p>
+      </form>
     </div>
   );
 }
