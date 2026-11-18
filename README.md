@@ -13,7 +13,7 @@ investigates → action-taken report → CMO reviews → citizen notified → Re
 | Hosted application (frontend) | https://cm-grivance-portal.vercel.app/ |
 | Hosted API + Swagger docs | https://cm-grivance-portal.onrender.com/docs |
 | Source code | https://github.com/Hitheshpp/CM_Grivance_Portal |
-| Demo video | _add URL_ |
+| Demo video | https://youtu.be/UAuHlJo1hcA |
 
 > **Note:** the API runs on a free tier that sleeps after ~15 minutes of inactivity. The **first request can take up to a
 > minute** while it wakes up; please wait and refresh once if the first page shows an error.
